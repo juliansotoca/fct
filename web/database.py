@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 import json
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "koinly_clone.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "fct.db")
 
 
 def get_db():

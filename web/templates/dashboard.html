@@ -97,7 +97,7 @@
                         </div>
                         <div class="text-right">
                             <span class="font-semibold text-gray-900 sensitive">{{ "%.2f"|format(item.value) }} €</span>
-                            <span class="text-xs text-gray-500 ml-2">({{ "%.1f"|format(item.value / summary.total_market_value * 100 if summary.total_market_value else 0) }}%)</span>
+                            <span class="text-xs text-gray-500 ml-2">({{ "%.1f"|format(item.value / (summary.total_market_value|float) * 100 if summary.total_market_value else 0) }}%)</span>
                         </div>
                     </div>
                     {% endfor %}
