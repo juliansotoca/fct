@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from werkzeug.datastructures import MultiDict
 from web.database import init_db, get_db, import_transactions, get_settings, save_setting
 from web.database import get_transactions, get_total_transactions, get_currencies, get_operations
+from web.database import get_transaction_eur_value
 from web.database import get_transaction_count, clear_all_data
 from web.engine import (
     compute_fifo_from_db, get_portfolio_summary, get_tax_summary,
@@ -98,6 +99,8 @@ def transactions():
         invert_currency=invert_currency, invert_operation=invert_operation,
         min_value=min_value,
     )
+    for tx in txs:
+        tx["eur_value"] = get_transaction_eur_value(tx["currency"], abs(float(tx["change"])), tx["time"])
     total = get_total_transactions(
         currencies=currencies or None, operations=operations or None,
         date_from=date_from or None, date_to=date_to or None,

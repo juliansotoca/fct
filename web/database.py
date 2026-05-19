@@ -268,6 +268,17 @@ def get_price(currency, date):
     return row["price_eur"] if row else None
 
 
+def get_transaction_eur_value(currency, amount, date_str):
+    from web.engine import STABLECOINS, STABLECOIN_RATES
+    if currency in STABLECOINS:
+        return float(amount) * STABLECOIN_RATES.get(currency, 0.92)
+    date = date_str[:10] if len(date_str) > 10 else date_str
+    price = get_price(currency, date)
+    if price:
+        return float(amount) * price
+    return 0.0
+
+
 def get_yearly_prices(year):
     conn = get_db()
     rows = conn.execute(
