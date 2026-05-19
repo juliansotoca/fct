@@ -75,7 +75,21 @@ def dashboard():
     sorted_holdings = sorted(summary["holdings"], key=lambda h: float(h["market_value"]), reverse=True)
     summary["holdings"] = sorted_holdings
 
-    return render_template("dashboard.html", summary=summary, history=history, tx_count=tx_count, invested=invested)
+    top_n = 7
+    top_holdings = sorted_holdings[:top_n]
+    others_value = sum(float(h["market_value"]) for h in sorted_holdings[top_n:])
+    pie_data = [
+        {"currency": h["currency"], "value": float(h["market_value"])}
+        for h in top_holdings if float(h["market_value"]) > 0
+    ]
+    if others_value > 0:
+        pie_data.append({"currency": "Others", "value": others_value})
+
+    return render_template(
+        "dashboard.html",
+        summary=summary, history=history, tx_count=tx_count, invested=invested,
+        pie_data=pie_data,
+    )
 
 
 @app.route("/transactions")
