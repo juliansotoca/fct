@@ -14,17 +14,6 @@ from web.database import get_db, save_price, get_price, get_yearly_prices, get_s
 
 STABLECOINS = {"USDT", "USDC", "BUSD", "DAI", "TUSD", "USDP", "USD", "EUR"}
 
-HISTORICAL_STABLECOIN_RATES = {
-    2021: {"USDT": 0.85, "USDC": 0.85, "BUSD": 0.85, "DAI": 0.85, "TUSD": 0.85, "USDP": 0.85, "USD": 0.85},
-    2022: {"USDT": 0.95, "USDC": 0.95, "BUSD": 0.95, "DAI": 0.95, "TUSD": 0.95, "USDP": 0.95, "USD": 0.95},
-    2023: {"USDT": 0.92, "USDC": 0.92, "BUSD": 0.92, "DAI": 0.92, "TUSD": 0.92, "USDP": 0.92, "USD": 0.92},
-    2024: {"USDT": 0.92, "USDC": 0.92, "BUSD": 0.92, "DAI": 0.92, "TUSD": 0.92, "USDP": 0.92, "USD": 0.92},
-    2025: {"USDT": 0.93, "USDC": 0.93, "BUSD": 0.93, "DAI": 0.93, "TUSD": 0.93, "USDP": 0.93, "USD": 0.93},
-    2026: {"USDT": 0.92, "USDC": 0.92, "BUSD": 0.92, "DAI": 0.92, "TUSD": 0.92, "USDP": 0.92, "USD": 0.92},
-}
-
-STABLECOIN_RATES = HISTORICAL_STABLECOIN_RATES[2026]
-
 HISTORICAL_ANNUAL_PRICES = {
     "BTC": {
         2021: 35000, 2022: 28000, 2023: 42000, 2024: 60000, 2025: 92000, 2026: 65000,
@@ -411,12 +400,45 @@ def fetch_prices_batch(currencies, days_back=1825):
     return results
 
 
+def populate_stablecoin_rates(years=None):
+    """Fetch historical EUR/USD rates and store them for all stablecoins."""
+    import requests
+    from web.database import save_price
+
+    if years is None:
+        years = range(2021, 2027)
+
+    for year in years:
+        try:
+            resp = requests.get(
+                f"https://api.frankfurter.app/{year}-01-01..{year}-12-31",
+                params={"from": "USD", "to": "EUR"},
+                timeout=15
+            )
+            if resp.status_code != 200:
+                continue
+            data = resp.json().get("rates", {})
+            for date_str, rates in data.items():
+                eur_per_usd = rates.get("EUR", 0.92)
+                for coin in STABLECOINS:
+                    if coin == "EUR":
+                        save_price(coin, date_str, 1.0, "frankfurter")
+                    else:
+                        save_price(coin, date_str, eur_per_usd, "frankfurter")
+        except Exception:
+            continue
+
+    _price_cache.clear()
+    _annual_cache.clear()
+
+
 def convert_to_eur(currency, amount, date, price_cache=None):
     if currency in STABLECOINS:
         date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(date)[:10]
-        year = int(date_str[:4])
-        rate = HISTORICAL_STABLECOIN_RATES.get(year, HISTORICAL_STABLECOIN_RATES[2026]).get(currency, 0.92)
-        return Decimal(str(amount)) * Decimal(str(rate))
+        cached = _get_price_cached(currency, date_str)
+        if cached:
+            return Decimal(str(amount)) * Decimal(str(cached))
+        return Decimal(str(amount)) * Decimal("0.92")
 
     date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(date)[:10]
     year = date_str[:4]
@@ -610,8 +632,10 @@ def get_portfolio_summary():
 
         market_price = prices.get(currency, {}).get(today_str) or today_prices.get(currency, 0)
 
-        if currency.upper() in STABLECOINS and not market_price:
-            market_price = STABLECOIN_RATES.get(currency.upper(), 0.92)
+        if not market_price and currency.upper() in STABLECOINS:
+            cached = _get_price_cached(currency.upper(), today_str)
+            if cached:
+                market_price = cached
 
         market_value = Decimal(str(total_qty)) * Decimal(str(market_price)) if market_price else Decimal("0")
         roi = ((market_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis else Decimal("0")

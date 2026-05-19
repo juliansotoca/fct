@@ -67,6 +67,23 @@
                 <div id="refreshResult" class="hidden text-sm"></div>
             </div>
         </div>
+
+        <div class="bg-white rounded-xl border border-gray-200">
+            <div class="p-6 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Stablecoin EUR Rates</h2>
+                <p class="text-sm text-gray-500 mt-1">Fetch historical EUR/USD rates for USDT, USDC, BUSD, DAI, etc.</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Years (comma-separated)</label>
+                    <input type="text" id="stablecoinYears" placeholder="e.g. 2021,2022,2023,2024,2025,2026" value="2021,2022,2023,2024,2025,2026" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button onclick="populateStablecoinRates()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                    Fetch Stablecoin Rates
+                </button>
+                <div id="stablecoinResult" class="hidden text-sm"></div>
+            </div>
+        </div>
     </div>
 
     <div class="space-y-6">
@@ -275,6 +292,43 @@ function refreshPrice() {
         } else {
             result.className = 'text-sm text-red-600 mt-2';
             result.textContent = `✗ ${data.error}`;
+        }
+    })
+    .catch(() => {
+        result.className = 'text-sm text-red-600 mt-2';
+        result.textContent = '✗ Request failed';
+    });
+}
+
+function populateStablecoinRates() {
+    const yearsInput = document.getElementById('stablecoinYears').value;
+    const result = document.getElementById('stablecoinResult');
+    const years = yearsInput.split(',').map(y => parseInt(y.trim())).filter(y => !isNaN(y));
+
+    if (!years.length) {
+        result.className = 'text-sm text-red-600 mt-2';
+        result.textContent = 'Please enter valid years';
+        result.classList.remove('hidden');
+        return;
+    }
+
+    result.className = 'text-sm text-blue-600 mt-2';
+    result.textContent = 'Fetching EUR/USD rates...';
+    result.classList.remove('hidden');
+
+    fetch('/api/populate-stablecoin-rates', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({years})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            result.className = 'text-sm text-green-600 mt-2';
+            result.textContent = `✓ Stablecoin rates populated for ${years.length} year(s)`;
+        } else {
+            result.className = 'text-sm text-red-600 mt-2';
+            result.textContent = `✗ ${data.error || 'Request failed'}`;
         }
     })
     .catch(() => {

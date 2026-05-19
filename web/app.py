@@ -316,6 +316,16 @@ def api_clear_data():
     return jsonify({"ok": True})
 
 
+@app.route("/api/populate-stablecoin-rates", methods=["POST"])
+def api_populate_stablecoin_rates():
+    from web.engine import populate_stablecoin_rates
+    data = request.get_json() or {}
+    years = data.get("years")
+    populate_stablecoin_rates(years)
+    invalidate_cache()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/refresh-price", methods=["POST"])
 def api_refresh_price():
     data = request.get_json() or {}
