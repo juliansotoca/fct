@@ -299,6 +299,87 @@ def api_clear_data():
     return jsonify({"ok": True})
 
 
+@app.route("/api/refresh-price", methods=["POST"])
+def api_refresh_price():
+    data = request.get_json() or {}
+    currency = data.get("currency", "").upper()
+    date_str = data.get("date", "")
+    if not currency or not date_str:
+        return jsonify({"error": "Missing currency or date"}), 400
+
+    try:
+        from datetime import datetime
+        target_date = datetime.fromisoformat(date_str)
+        from web.engine import fetch_prices_batch
+        from web.database import save_price, get_price
+
+        # Try to fetch from Binance API for the specific date
+        import requests
+        symbol_map = {
+            "BTC": "BTCEUR", "ETH": "ETHEUR", "BNB": "BNBEUR",
+            "SOL": "SOLEUR", "ADA": "ADAEUR", "XRP": "XRPEUR",
+            "DOGE": "DOGEEUR", "DOT": "DOTEUR", "AVAX": "AVAXEUR",
+            "MATIC": "MATICEUR", "LINK": "LINKEUR", "UNI": "UNIEUR",
+            "ATOM": "ATOMEUR", "LTC": "LTCEUR", "NEAR": "NEAREUR",
+            "FTM": "FTMEUR", "AAVE": "AAVEEUR", "ALGO": "ALGOEUR",
+            "SUI": "SUIEUR", "SEI": "SEIEUR", "TIA": "TIAEUR",
+            "JUP": "JUPEUR", "WIF": "WIFEUR", "PEPE": "PEPEEUR",
+            "RENDER": "RENDEREUR", "FET": "FETEUR", "TAO": "TAOEUR",
+            "ONDO": "ONDOEUR", "STRK": "STRKEUR", "ENA": "ENAEUR",
+        }
+        symbol = symbol_map.get(currency, f"{currency}EUR")
+        ts = int(target_date.timestamp() * 1000)
+
+        resp = requests.get(
+            "https://api.binance.com/api/v3/klines",
+            params={"symbol": symbol, "interval": "1d", "startTime": ts, "limit": 1},
+            timeout=10
+        )
+        if resp.status_code == 200 and resp.json():
+            kline = resp.json()[0]
+            close_price = float(kline[4])
+            save_price(currency, target_date.strftime("%Y-%m-%d"), close_price, "binance")
+            invalidate_cache()
+            return jsonify({"ok": True, "price": close_price, "source": "binance"})
+
+        # Fallback to CoinGecko
+        cg_id_map = {
+            "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin",
+            "SOL": "solana", "ADA": "cardano", "XRP": "ripple",
+            "DOGE": "dogecoin", "DOT": "polkadot", "AVAX": "avalanche-2",
+            "MATIC": "matic-network", "LINK": "chainlink", "UNI": "uniswap",
+            "ATOM": "cosmos", "LTC": "litecoin", "NEAR": "near",
+            "FTM": "fantom", "AAVE": "aave", "ALGO": "algorand",
+            "SUI": "sui", "SEI": "sei-network", "TIA": "celestia",
+            "JUP": "jupiter-exchange-solana", "WIF": "dogwifcoin",
+            "PEPE": "pepe", "RENDER": "render-token", "FET": "fetch-ai",
+            "TAO": "bittensor", "ONDO": "ondo-finance", "STRK": "starknet",
+            "ENA": "ethena", "USDT": "tether", "USDC": "usd-coin",
+            "BUSD": "binance-usd", "SHIB": "shiba-inu", "ARB": "arbitrum",
+            "HIGH": "highstreet", "MC": "mercurial", "SANTOS": "santos-fc-fan-token",
+            "NOT": "notcoin", "CAT": "cat-token", "PENGU": "pudgy-penguins",
+        }
+        cg_id = cg_id_map.get(currency, currency.lower())
+        date_fmt = target_date.strftime("%d-%m-%Y")
+        cg_resp = requests.get(
+            f"https://api.coingecko.com/api/v3/coins/{cg_id}/history",
+            params={"date": date_fmt, "localization": "false"},
+            headers={"Accept": "application/json"},
+            timeout=10
+        )
+        if cg_resp.status_code == 200:
+            cg_data = cg_resp.json()
+            eur_price = cg_data.get("market_data", {}).get("current_price", {}).get("eur")
+            if eur_price:
+                save_price(currency, target_date.strftime("%Y-%m-%d"), eur_price, "coingecko")
+                invalidate_cache()
+                return jsonify({"ok": True, "price": eur_price, "source": "coingecko"})
+
+        return jsonify({"error": "Price not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/portfolio-data")
 def api_portfolio_data():
     summary = get_portfolio_summary()
@@ -399,4 +480,4 @@ def api_holdings_data():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5002)

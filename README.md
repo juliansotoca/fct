@@ -43,31 +43,33 @@ Web application for cryptocurrency tax reporting, compliant with Spanish tax law
 ### 1. Install dependencies
 
 ```bash
-cd web
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r web/requirements.txt
 ```
 
 ### 2. Run the server
 
 ```bash
-python -m web.app
+python web/app.py
 ```
 
-Or specify a custom port:
+Open http://127.0.0.1:5002 in your browser.
+
+> **Note:** Port 5000 is reserved by macOS AirTunes. The app runs on **5002** by default.
+
+### 3. Import your data
+
+1. Export your transaction history from Binance (CSV format)
+2. Go to **Settings** → **Import CSV**
+3. Upload the file and wait for processing
+
+### Docker (Alternative)
 
 ```bash
-python -c "from web.app import app; app.run(port=5002)"
+docker build -t cryptotax .
+docker run -p 5002:5002 -v $(pwd)/data:/app/data cryptotax
 ```
-
-### 3. Open in browser
-
-```
-http://127.0.0.1:5000
-```
-
-### 4. Import your data
-
-Go to **Settings** → Upload your Binance Transaction History CSV file. The app will automatically parse, deduplicate, and store transactions in SQLite.
 
 ## Project Structure
 
@@ -169,4 +171,4 @@ Stablecoins (USDT, USDC, BUSD) use fixed EUR rates.
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
