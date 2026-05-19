@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}{{ t('tax_reports_title') }} - CryptoTax{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ t('tax_reports_title') }}</h1>
+            <p class="text-gray-500 text-sm mt-1">{{ t('tax_reports_subtitle') }} - {{ settings.home_country }}</p>
+        </div>
+        <select id="yearSelect" onchange="window.location.href='?year=' + this.value" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500">
+            {% for y in yearly_data|sort(reverse=true) %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+    <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div>
+            <p class="text-sm font-semibold text-amber-800">{{ t('tax_warning_title') }}</p>
+            <p class="text-sm text-amber-700 mt-1">{{ t('tax_warning_desc') }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+        {% if summary.disposal_count == 0 and summary.income_count == 0 %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+            <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div>
+                    <h3 class="font-semibold text-yellow-900">{{ t('no_data_for_year') }} {{ year }}</h3>
+                    <p class="text-yellow-700 text-sm mt-1">{{ t('no_data_desc') }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="bg-white rounded-xl border border-gray-200">
+            <div class="p-6 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">{{ t('summary') }}</h2>
+            </div>
+            <div class="p-6">
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <a href="?year={{ year }}&detail=disposals" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors">{{ summary.disposal_count }} {{ t('disposals') }} →</a>
+                    <a href="?year={{ year }}&detail=incomes" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium hover:bg-emerald-200 transition-colors">{{ summary.income_count }} {{ t('incomes') }} →</a>
+                </div>
+
+                <div class="space-y-4">
+                    <a href="?year={{ year }}&detail=disposals" class="flex justify-between items-center py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+                        <span class="text-gray-600">{{ t('capital_gains') }}</span>
+                        <span class="font-semibold {% if summary.net_gain_loss >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive group-hover:underline">
+                            {{ "%.2f"|format(summary.net_gain_loss) }} € →
+                        </span>
+                    </a>
+                    <a href="?year={{ year }}&detail=gains" class="flex justify-between items-center py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+                        <span class="text-gray-600">{{ t('total_gains') }}</span>
+                        <span class="font-semibold text-emerald-600 sensitive group-hover:underline">{{ "%.2f"|format(summary.total_gains) }} € →</span>
+                    </a>
+                    <a href="?year={{ year }}&detail=losses" class="flex justify-between items-center py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+                        <span class="text-gray-600">{{ t('total_losses') }}</span>
+                        <span class="font-semibold text-red-600 sensitive group-hover:underline">{{ "%.2f"|format(summary.total_losses) }} € →</span>
+                    </a>
+                    <a href="?year={{ year }}&detail=incomes" class="flex justify-between items-center py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+                        <span class="text-gray-600">{{ t('income_staking') }}</span>
+                        <span class="font-semibold text-gray-900 sensitive group-hover:underline">{{ "%.2f"|format(summary.income_value) }} € →</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {% if yearly_data %}
+        <div class="bg-white rounded-xl border border-gray-200">
+            <div class="p-6 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">{{ t('historical_summary') }}</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('year') }}</th>
+                            <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('gains') }}</th>
+                            <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('losses') }}</th>
+                            <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('net_pnl') }}</th>
+                            <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('invested') }}</th>
+                            <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('disposals') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for y in yearly_data|sort(reverse=true) %}
+                        <tr class="border-b border-gray-100 hover:bg-gray-50 {% if y == year %}bg-blue-50{% endif %}">
+                            <td class="px-6 py-4">
+                                <a href="?year={{ y }}" class="font-medium text-blue-600 hover:text-blue-800">{{ y }}</a>
+                            </td>
+                            <td class="px-6 py-4 text-right text-emerald-600 sensitive">{{ "%.2f"|format(yearly_data[y].gains) }} €</td>
+                            <td class="px-6 py-4 text-right text-red-600 sensitive">{{ "%.2f"|format(yearly_data[y].losses) }} €</td>
+                            <td class="px-6 py-4 text-right font-semibold {% if yearly_data[y].gains - yearly_data[y].losses >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">
+                                {{ "%.2f"|format(yearly_data[y].gains - yearly_data[y].losses) }} €
+                            </td>
+                            <td class="px-6 py-4 text-right text-gray-900 sensitive">{{ "%.2f"|format(invested.yearly[y].values()|sum) if invested.yearly.get(y) else "0.00" }} €</td>
+                            <td class="px-6 py-4 text-right text-gray-600">{{ yearly_data[y].count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="space-y-6">
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center
+                    {% if summary.net_gain_loss >= 0 %}bg-emerald-100{% else %}bg-red-100{% endif %}">
+                    <svg class="w-8 h-8 {% if summary.net_gain_loss >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {% if summary.net_gain_loss >= 0 %}
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        {% else %}
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+                        {% endif %}
+                    </svg>
+                </div>
+                <p class="text-sm text-gray-500 mt-3">{{ t('your_gains_for') }} {{ year }}</p>
+                <p class="text-2xl font-bold {% if summary.net_gain_loss >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">
+                    {{ "%.2f"|format(summary.net_gain_loss) }} €
+                </p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 class="font-semibold text-gray-900 mb-4">{{ t('settings_label') }}</h3>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">{{ t('home_country') }}</span>
+                    <span class="font-medium">{{ settings.home_country }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">{{ t('base_currency') }}</span>
+                    <span class="font-medium">{{ settings.base_currency }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">{{ t('cost_basis_method') }}</span>
+                    <span class="font-medium">{{ settings.cost_basis_method }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">{{ t('cost_tracking') }}</span>
+                    <span class="font-medium">{{ settings.cost_tracking_method }}</span>
+                </div>
+            </div>
+            <a href="{{ url_for('settings') }}" class="block mt-4 text-center text-blue-600 text-sm font-medium hover:text-blue-800">{{ t('change_settings') }} →</a>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 class="font-semibold text-gray-900 mb-3">{{ t('irpf_brackets') }}</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-gray-500">{{ t('up_to') }} 6.000€</span><span class="font-medium">19%</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">6.000€ - 50.000€</span><span class="font-medium">21%</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">50.000€ - 200.000€</span><span class="font-medium">23%</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">200.000€ - 2M€</span><span class="font-medium">27%</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">{{ t('more_than') }} 2M€</span><span class="font-medium">28%</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

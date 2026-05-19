@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block title %}{{ t('dashboard_title') }} - CryptoTax{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">{{ t('dashboard_title') }}</h1>
+    <p class="text-gray-500 text-sm mt-1">{{ t('dashboard_subtitle') }}</p>
+</div>
+
+{% if tx_count == 0 %}
+<div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+    <div class="flex items-start gap-4">
+        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+            <h3 class="font-semibold text-blue-900">{{ t('import_transactions_title') }}</h3>
+            <p class="text-blue-700 text-sm mt-1">{{ t('import_transactions_desc') }}</p>
+            <a href="{{ url_for('settings') }}" class="inline-block mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">{{ t('go_to_settings') }}</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <p class="text-sm text-gray-500">{{ t('total_value') }}</p>
+                <p class="text-3xl font-bold text-gray-900 sensitive">{{ "%.2f"|format(summary.total_market_value) }} €</p>
+                {% if summary.total_roi > 0 %}
+                <p class="text-sm text-emerald-600 mt-1 sensitive">↑ {{ "%.2f"|format(summary.total_roi) }}%</p>
+                {% elif summary.total_roi < 0 %}
+                <p class="text-sm text-red-600 mt-1 sensitive">↓ {{ "%.2f"|format(summary.total_roi) }}%</p>
+                {% endif %}
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-500">{{ t('cost_basis') }}</p>
+                <p class="text-lg font-semibold text-gray-700 sensitive">{{ "%.2f"|format(summary.total_cost) }} €</p>
+                <p class="text-sm text-gray-500 mt-2">{{ t('unrealized_gains') }}</p>
+                <p class="text-lg font-semibold {% if summary.total_unrealized >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">{{ "%.2f"|format(summary.total_unrealized) }} €</p>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <button onclick="setTimeframe(7)" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg transition-colors" data-days="7">7D</button>
+            <button onclick="setTimeframe(30)" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg transition-colors" data-days="30">30D</button>
+            <button onclick="setTimeframe(90)" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg transition-colors bg-blue-100 text-blue-700" data-days="90">90D</button>
+            <button onclick="setTimeframe(180)" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg transition-colors" data-days="180">6M</button>
+            <button onclick="setTimeframe(365)" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg transition-colors" data-days="365">1Y</button>
+            <button onclick="setTimeframe(0)" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg transition-colors" data-days="0">{{ t('all_time') }}</button>
+        </div>
+
+        <div class="h-64">
+            <canvas id="portfolioChart"></canvas>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="font-semibold text-gray-900 mb-4">{{ t('summary') }}</h3>
+        <div class="space-y-4">
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span class="text-sm text-gray-600">{{ t('transactions_count') }}</span>
+                <span class="font-semibold text-gray-900">{{ tx_count }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span class="text-sm text-gray-600">{{ t('currencies_count') }}</span>
+                <span class="font-semibold text-gray-900">{{ summary.holdings|length }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span class="text-sm text-gray-600">{{ t('disposals_count') }}</span>
+                <span class="font-semibold text-gray-900">{{ summary.holdings|length }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if invested.total > 0 %}
+<div class="bg-white rounded-xl border border-gray-200 mb-6">
+    <div class="p-6 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">{{ t('total_invested') }}</h2>
+        <p class="text-sm text-gray-500 mt-1">{{ t('invested_subtitle') }}</p>
+    </div>
+    <div class="p-6">
+        <div class="flex items-baseline gap-3 mb-4">
+            <p class="text-3xl font-bold text-gray-900 sensitive">{{ "%.2f"|format(invested.total) }} €</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">{{ t('year') }}</th>
+                        {% for curr in invested.currencies %}
+                        <th class="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">{{ curr }}</th>
+                        {% endfor %}
+                        <th class="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase">{{ t('total_eur') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for year in invested.yearly | dictsort(reverse=true) %}
+                    {% set year_total = year[1].values()|sum %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 font-medium text-gray-900">{{ year[0] }}</td>
+                        {% for curr in invested.currencies %}
+                        <td class="px-4 py-3 text-right text-gray-900 sensitive">{{ "%.2f"|format(year[1].get(curr, 0)) }}</td>
+                        {% endfor %}
+                        <td class="px-4 py-3 text-right font-semibold text-gray-900 sensitive">{{ "%.2f"|format(year_total) }} €</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="bg-white rounded-xl border border-gray-200">
+    <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">{{ t('holdings') }}</h2>
+        <div class="flex items-center gap-4">
+            <input type="text" id="holdingsSearch" oninput="filterHoldings()" placeholder="{{ t('search_assets') }}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48">
+            <span id="sortLabel" class="text-xs text-gray-500">{{ t('sorted_by') }}: {{ t('market_value') }} ↓</span>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full" id="holdingsTable">
+            <thead>
+                <tr class="border-b border-gray-200">
+                    <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700" onclick="sortHoldings('currency')">{{ t('asset') }} <span class="sort-arrow" data-col="currency"></span></th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700" onclick="sortHoldings('balance')">{{ t('balance') }} <span class="sort-arrow" data-col="balance"></span></th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700" onclick="sortHoldings('cost_eur')">{{ t('cost_eur') }} <span class="sort-arrow" data-col="cost_eur"></span></th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700" onclick="sortHoldings('market_value')">{{ t('market_value') }} <span class="sort-arrow" data-col="market_value">↓</span></th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700" onclick="sortHoldings('roi')">{{ t('roi') }} <span class="sort-arrow" data-col="roi"></span></th>
+                </tr>
+            </thead>
+            <tbody id="holdingsBody">
+                {% for h in summary.holdings %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    onclick="window.location.href='{{ url_for('holding_detail', currency=h.currency) }}'"
+                    data-currency="{{ h.currency }}"
+                    data-balance="{{ h.balance }}"
+                    data-cost="{{ h.cost_eur }}"
+                    data-market="{{ h.market_value }}"
+                    data-roi="{{ h.roi }}">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
+                                {{ h.currency[:2] }}
+                            </div>
+                            <span class="font-medium text-gray-900">{{ h.currency }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-right text-gray-900 sensitive">{{ "%.8f"|format(h.balance) }}</td>
+                    <td class="px-6 py-4 text-right text-gray-900 sensitive">{{ "%.2f"|format(h.cost_eur) }} €</td>
+                    <td class="px-6 py-4 text-right text-gray-900 sensitive">{{ "%.2f"|format(h.market_value) }} €</td>
+                    <td class="px-6 py-4 text-right">
+                        <span class="{% if h.roi >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} font-medium sensitive">
+                            {{ "%.2f"|format(h.roi) }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const historyData = {{ history|tojson }};
+let currentDays = 90;
+let currentChart = null;
+
+function renderChart(days) {
+    let data = historyData;
+    if (days > 0) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        data = historyData.filter(d => new Date(d.date) >= cutoff);
+    }
+
+    const labels = data.map(d => d.date);
+    const values = data.map(d => d.value);
+
+    if (currentChart) {
+        currentChart.destroy();
+    }
+
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+    currentChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                borderColor: '#3b82f6',
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 10,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: (ctx) => `€${ctx.parsed.y.toFixed(2)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        maxTicksLimit: 8,
+                        font: { size: 11 },
+                        color: '#9ca3af'
+                    }
+                },
+                y: {
+                    grid: { color: '#f3f4f6' },
+                    ticks: {
+                        font: { size: 11 },
+                        color: '#9ca3af',
+                        callback: (v) => `€${v.toFixed(0)}`
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+}
+
+function setTimeframe(days) {
+    currentDays = days;
+    document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-100', 'text-blue-700');
+        if (parseInt(btn.dataset.days) === days) {
+            btn.classList.add('bg-blue-100', 'text-blue-700');
+        }
+    });
+    renderChart(days);
+}
+
+let sortCol = 'market_value';
+let sortDir = 'desc';
+
+function sortHoldings(col) {
+    if (sortCol === col) {
+        sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    } else {
+        sortCol = col;
+        sortDir = col === 'currency' ? 'asc' : 'desc';
+    }
+
+    const tbody = document.getElementById('holdingsBody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        let va = a.dataset[col === 'cost_eur' ? 'cost' : col === 'market_value' ? 'market' : col];
+        let vb = b.dataset[col === 'cost_eur' ? 'cost' : col === 'market_value' ? 'market' : col];
+        if (col === 'currency') {
+            return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        }
+        va = parseFloat(va);
+        vb = parseFloat(vb);
+        return sortDir === 'asc' ? va - vb : vb - va;
+    });
+
+    rows.forEach(r => tbody.appendChild(r));
+
+    document.querySelectorAll('.sort-arrow').forEach(el => {
+        el.textContent = el.dataset.col === col ? (sortDir === 'desc' ? '↓' : '↑') : '';
+    });
+
+    const labels = {
+        currency: '{{ t("asset") }}',
+        balance: '{{ t("balance") }}',
+        cost_eur: '{{ t("cost_eur") }}',
+        market_value: '{{ t("market_value") }}',
+        roi: '{{ t("roi") }}',
+    };
+    document.getElementById('sortLabel').textContent = `{{ t('sorted_by') }}: ${labels[col]} ${sortDir === 'desc' ? '↓' : '↑'}`;
+}
+
+function filterHoldings() {
+    const query = document.getElementById('holdingsSearch').value.toLowerCase();
+    document.querySelectorAll('#holdingsBody tr').forEach(row => {
+        const currency = row.dataset.currency.toLowerCase();
+        row.style.display = currency.includes(query) ? '' : 'none';
+    });
+}
+
+renderChart(90);
+</script>
+{% endblock %}

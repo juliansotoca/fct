@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ currency }} - CryptoTax{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('dashboard') }}" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ currency }} {{ t('holding_title') }}</h1>
+            <p class="text-gray-500 text-sm mt-1">{{ t('detailed_analysis') }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm text-gray-500">{{ t('current_balance') }}</p>
+        <p class="text-2xl font-bold text-gray-900 sensitive">{{ "%.8f"|format(holding.balance) }} {{ currency }}</p>
+        <p class="text-sm text-gray-500 mt-2">{{ t('market_value') }}</p>
+        <p class="text-xl font-semibold text-gray-900 sensitive">{{ "%.2f"|format(holding.market_value) }} €</p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm text-gray-500">{{ t('total_bought') }}</p>
+        <p class="text-2xl font-bold text-emerald-600 sensitive">{{ "%.8f"|format(total_bought) }}</p>
+        <p class="text-sm text-gray-500 mt-2">{{ t('total_sold') }}</p>
+        <p class="text-xl font-semibold text-red-600 sensitive">{{ "%.8f"|format(total_sold) }}</p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm text-gray-500">{{ t('cost_basis') }}</p>
+        <p class="text-2xl font-bold text-gray-900 sensitive">{{ "%.2f"|format(holding.cost_eur) }} €</p>
+        <p class="text-sm text-gray-500 mt-2">{{ t('roi') }}</p>
+        <p class="text-xl font-semibold {% if holding.roi >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">{{ "%.2f"|format(holding.roi) }}%</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl border border-gray-200">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">{{ t('top_purchases') }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ t('largest_buys') }}</p>
+        </div>
+        <div class="divide-y divide-gray-100">
+            {% for tx in top_buys %}
+            <div class="p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">{{ tx.time[:10] }}</p>
+                    <p class="text-xs text-gray-400">{{ tx.operation }}</p>
+                </div>
+                <p class="font-medium text-emerald-600 sensitive">+{{ "%.8f"|format(tx.change|float) }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">{{ t('activity_by_type') }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ t('transaction_breakdown') }}</p>
+        </div>
+        <div class="p-6">
+            {% set ns = namespace(types={}) %}
+            {% for tx in transactions %}
+                {% if tx.operation in ns.types %}
+                    {% set ns.types = dict(ns.types, **{tx.operation: ns.types[tx.operation] + 1}) %}
+                {% else %}
+                    {% set ns.types = dict(ns.types, **{tx.operation: 1}) %}
+                {% endif %}
+            {% endfor %}
+            <div class="space-y-3">
+                {% for op, count in ns.types|dictsort(by='value', reverse=true) %}
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-700">{{ op }}</span>
+                    <div class="flex items-center gap-3">
+                        <div class="w-32 bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ (count / transactions|length * 100)|round }}%"></div>
+                        </div>
+                        <span class="text-sm text-gray-500 w-16 text-right">{{ count }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200">
+    <div class="p-6 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">{{ t('all_transactions') }}</h2>
+        <p class="text-sm text-gray-500 mt-1">{{ transactions|length }} {{ t('transactions_label') }}</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-gray-200">
+                    <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('date') }}</th>
+                    <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('type') }}</th>
+                    <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('account') }}</th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('amount') }}</th>
+                    <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('note') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in transactions %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="px-6 py-3 text-sm text-gray-900">{{ tx.time[:10] }} <span class="text-gray-400">{{ tx.time[11:19] }}</span></td>
+                    <td class="px-6 py-3">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                            {% if tx.change|float > 0 %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ tx.operation }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-sm text-gray-500">{{ tx.account or '-' }}</td>
+                    <td class="px-6 py-3 text-right font-medium {% if tx.change|float > 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">
+                        {% if tx.change|float > 0 %}+{% endif %}{{ "%.8f"|format(tx.change|float) }}
+                    </td>
+                    <td class="px-6 py-3 text-sm text-gray-400 max-w-[200px] truncate">{{ tx.observation or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

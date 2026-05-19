@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}{{ t('transactions_title') }} - CryptoTax{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ t('transactions_title') }}</h1>
+            <p class="text-gray-500 text-sm mt-1"><span id="txCount">{{ total }}</span> {{ t('transactions_subtitle') }}</p>
+        </div>
+    </div>
+</div>
+
+<div id="selectionBar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white rounded-xl shadow-2xl px-6 py-3 flex items-center gap-6">
+    <span class="text-sm font-medium"><span id="selCount">0</span> {{ t('selected') }}</span>
+    <div class="h-6 w-px bg-gray-700"></div>
+    <div class="flex items-center gap-4 text-sm">
+        <div><span class="text-gray-400">{{ t('sum') }}</span> <span id="selSum" class="font-semibold ml-1">0</span></div>
+        <div><span class="text-gray-400">{{ t('avg') }}</span> <span id="selAvg" class="font-semibold ml-1">0</span></div>
+        <div><span class="text-gray-400">{{ t('min') }}</span> <span id="selMin" class="font-semibold ml-1">0</span></div>
+        <div><span class="text-gray-400">{{ t('max') }}</span> <span id="selMax" class="font-semibold ml-1">0</span></div>
+    </div>
+    <div class="h-6 w-px bg-gray-700"></div>
+    <button onclick="clearSelection()" class="text-gray-400 hover:text-white text-sm">{{ t('clear') }}</button>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 mb-6">
+    <div class="p-4 border-b border-gray-200">
+        <div class="flex flex-wrap gap-3 items-start">
+            <div class="relative">
+                <button onclick="toggleDropdown('currencyDropdown')" class="filter-btn px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white hover:bg-gray-50 transition-colors flex items-center gap-2 min-w-[160px]">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                    <span id="currencyLabel">{{ t('all_currencies') }}</span>
+                    <svg class="w-4 h-4 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="currencyDropdown" class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 w-64 max-h-80 overflow-hidden">
+                    <div class="p-2 border-b border-gray-100">
+                        <input type="text" id="currencySearch" oninput="filterDropdownItems('currencyList', this.value)" placeholder="{{ t('search') }}" class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="p-2 border-b border-gray-100 flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-2 py-1 rounded w-full">
+                            <input type="checkbox" id="currencyInvert" {% if invert_currency %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="font-medium text-gray-700">{{ t('inverse') }}</span>
+                        </label>
+                        <button onclick="selectAllCurrencies()" class="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded">{{ t('all') }}</button>
+                        <button onclick="clearAllCurrencies()" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded">{{ t('none') }}</button>
+                    </div>
+                    <div class="overflow-y-auto max-h-64 p-1" id="currencyList">
+                        {% for c in currencies %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded">
+                            <input type="checkbox" name="currency" value="{{ c }}" {% if c in selected_currencies %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="text-gray-700">{{ c }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="p-2 border-t border-gray-100">
+                        <button onclick="applyFilters(); closeDropdowns()" class="w-full px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">{{ t('apply') }}</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative">
+                <button onclick="toggleDropdown('operationDropdown')" class="filter-btn px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white hover:bg-gray-50 transition-colors flex items-center gap-2 min-w-[160px]">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                    <span id="operationLabel">{{ t('all_types') }}</span>
+                    <svg class="w-4 h-4 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="operationDropdown" class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 w-80 max-h-80 overflow-hidden">
+                    <div class="p-2 border-b border-gray-100">
+                        <input type="text" id="operationSearch" oninput="filterDropdownItems('operationList', this.value)" placeholder="{{ t('search') }}" class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="p-2 border-b border-gray-100 flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-2 py-1 rounded w-full">
+                            <input type="checkbox" id="operationInvert" {% if invert_operation %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="font-medium text-gray-700">{{ t('inverse') }}</span>
+                        </label>
+                        <button onclick="selectAllOperations()" class="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded">{{ t('all') }}</button>
+                        <button onclick="clearAllOperations()" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded">{{ t('none') }}</button>
+                    </div>
+                    <div class="overflow-y-auto max-h-64 p-1" id="operationList">
+                        {% for op in operations %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded">
+                            <input type="checkbox" name="operation" value="{{ op }}" {% if op in selected_operations %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="text-gray-700">{{ op }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="p-2 border-t border-gray-100">
+                        <button onclick="applyFilters(); closeDropdowns()" class="w-full px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">{{ t('apply') }}</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative">
+                <input type="number" id="filterMinValue" value="{{ min_value or '' }}" step="any" placeholder="{{ t('min_value') }}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-32">
+            </div>
+
+            <input type="date" id="filterDateFrom" value="{{ date_from }}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{ t('from') }}">
+            <input type="date" id="filterDateTo" value="{{ date_to }}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{ t('to') }}">
+            <a href="{{ url_for('transactions') }}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">{{ t('clear') }}</a>
+        </div>
+
+        {% if selected_currencies or selected_operations or date_from or date_to or min_value %}
+        <div class="mt-3 flex flex-wrap gap-2">
+            {% if selected_currencies %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
+                {% if invert_currency %}NOT {% endif %}{{ selected_currencies|join(", ") }}
+                <button onclick="clearAllCurrencies(); applyFilters()" class="ml-1 hover:text-blue-900">×</button>
+            </span>
+            {% endif %}
+            {% if selected_operations %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs">
+                {% if invert_operation %}NOT {% endif %}{{ selected_operations|join(", ") }}
+                <button onclick="clearAllOperations(); applyFilters()" class="ml-1 hover:text-purple-900">×</button>
+            </span>
+            {% endif %}
+            {% if min_value %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-full text-xs">
+                {{ t('min_value') }}: {{ min_value }}
+                <a href="?{{ request.query_string.decode().replace('min_value=' + min_value|string, '').replace('&&', '&').replace('?&', '?') }}" class="ml-1 hover:text-amber-900">×</a>
+            </span>
+            {% endif %}
+            {% if date_from %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+                {{ t('from') }} {{ date_from }}
+                <a href="?{{ request.query_string.decode().replace('date_from=' + date_from, '').replace('&&', '&').replace('?&', '?') }}" class="ml-1 hover:text-gray-900">×</a>
+            </span>
+            {% endif %}
+            {% if date_to %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+                {{ t('to') }} {{ date_to }}
+                <a href="?{{ request.query_string.decode().replace('date_to=' + date_to, '').replace('&&', '&').replace('?&', '?') }}" class="ml-1 hover:text-gray-900">×</a>
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div id="txList" class="divide-y divide-gray-100">
+        {% for tx in transactions %}
+        <div class="p-4 hover:bg-gray-50 transition-colors flex items-center gap-4 group" data-id="{{ tx.id }}" data-value="{{ tx.change|float|abs }}">
+            <input type="checkbox" class="tx-select rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" data-id="{{ tx.id }}" data-value="{{ tx.change }}" onchange="updateSelection()">
+            <div class="flex items-center gap-4 flex-1">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center
+                    {% if tx.change|float > 0 %}bg-emerald-100{% else %}bg-red-100{% endif %}">
+                    {% if tx.change|float > 0 %}
+                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                    {% else %}
+                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                    {% endif %}
+                </div>
+                <div>
+                    <p class="font-medium text-gray-900">{{ tx.operation }}</p>
+                    <p class="text-sm text-gray-500">{{ tx.time[:10] }} {{ tx.time[11:19] }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="font-medium {% if tx.change|float > 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">
+                    {% if tx.change|float > 0 %}+{% endif %}{{ "%.8f"|format(tx.change|float) }} {{ tx.currency }}
+                </p>
+                {% if tx.account %}
+                <p class="text-xs text-gray-400">{{ tx.account }}</p>
+                {% endif %}
+            </div>
+            {% if tx.observation %}
+            <p class="text-xs text-gray-400 max-w-[200px] truncate">{{ tx.observation[:50] }}{% if tx.observation|length > 50 %}...{% endif %}</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="p-12 text-center text-gray-500">
+            <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <p>{{ t('no_transactions_found') }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="pagination" class="p-4 border-t border-gray-200 flex items-center justify-between">
+        <p class="text-sm text-gray-500">{{ t('page') }} {{ page }} {{ t('of') }} {{ total_pages }}</p>
+        <div class="flex gap-2">
+            {% if page > 1 %}
+            <a href="?{{ build_query(page - 1) }}" class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">{{ t('previous') }}</a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?{{ build_query(page + 1) }}" class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">{{ t('next') }}</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let debounceTimer;
+let activeDropdown = null;
+
+function toggleDropdown(id) {
+    const dropdown = document.getElementById(id);
+    if (activeDropdown && activeDropdown !== dropdown) {
+        activeDropdown.classList.add('hidden');
+    }
+    dropdown.classList.toggle('hidden');
+    activeDropdown = dropdown.classList.contains('hidden') ? null : dropdown;
+}
+
+function closeDropdowns() {
+    document.querySelectorAll('[id$="Dropdown"]').forEach(d => d.classList.add('hidden'));
+    activeDropdown = null;
+}
+
+document.addEventListener('click', (e) => {
+    if (activeDropdown && !e.target.closest('.relative')) {
+        applyFilters();
+        closeDropdowns();
+    }
+});
+
+function getCheckedValues(name) {
+    return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(cb => cb.value);
+}
+
+function applyFilters() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        const params = new URLSearchParams();
+        const currencies = getCheckedValues('currency');
+        const operations = getCheckedValues('operation');
+
+        currencies.forEach(c => params.append('currency', c));
+        operations.forEach(o => params.append('operation', o));
+
+        if (document.getElementById('currencyInvert').checked) params.set('invert_currency', '1');
+        if (document.getElementById('operationInvert').checked) params.set('invert_operation', '1');
+
+        const minVal = document.getElementById('filterMinValue').value;
+        if (minVal) params.set('min_value', minVal);
+
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+
+        params.set('page', '1');
+        window.location.href = '?' + params.toString();
+    }, 400);
+}
+
+function updateLabels() {
+    const currencies = getCheckedValues('currency');
+    const operations = getCheckedValues('operation');
+
+    const currencyLabel = document.getElementById('currencyLabel');
+    const operationLabel = document.getElementById('operationLabel');
+
+    if (currencies.length === 0) {
+        currencyLabel.textContent = '{{ t("all_currencies") }}';
+    } else if (currencies.length === 1) {
+        currencyLabel.textContent = currencies[0];
+    } else {
+        currencyLabel.textContent = `${currencies.length} {{ t("selected") }}`;
+    }
+
+    if (operations.length === 0) {
+        operationLabel.textContent = '{{ t("all_types") }}';
+    } else if (operations.length === 1) {
+        operationLabel.textContent = operations[0];
+    } else {
+        operationLabel.textContent = `${operations.length} {{ t("selected") }}`;
+    }
+}
+
+function selectAllCurrencies() {
+    document.querySelectorAll('input[name="currency"]').forEach(cb => cb.checked = true);
+    updateLabels();
+}
+
+function clearAllCurrencies() {
+    document.querySelectorAll('input[name="currency"]').forEach(cb => cb.checked = false);
+    updateLabels();
+}
+
+function selectAllOperations() {
+    document.querySelectorAll('input[name="operation"]').forEach(cb => cb.checked = true);
+    updateLabels();
+}
+
+function clearAllOperations() {
+    document.querySelectorAll('input[name="operation"]').forEach(cb => cb.checked = false);
+    updateLabels();
+}
+
+function filterDropdownItems(listId, query) {
+    const items = document.querySelectorAll(`#${listId} label`);
+    const q = query.toLowerCase();
+    items.forEach(item => {
+        const text = item.querySelector('span').textContent.toLowerCase();
+        item.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+document.querySelectorAll('input[name="currency"], input[name="operation"]').forEach(cb => {
+    cb.addEventListener('change', updateLabels);
+});
+document.getElementById('filterDateFrom').addEventListener('change', applyFilters);
+document.getElementById('filterDateTo').addEventListener('change', applyFilters);
+document.getElementById('filterMinValue').addEventListener('change', applyFilters);
+
+function updateSelection() {
+    const selected = document.querySelectorAll('.tx-select:checked');
+    const bar = document.getElementById('selectionBar');
+    const count = selected.length;
+
+    document.getElementById('selCount').textContent = count;
+
+    if (count === 0) {
+        bar.classList.add('hidden');
+        return;
+    }
+
+    bar.classList.remove('hidden');
+
+    const values = Array.from(selected).map(cb => parseFloat(cb.dataset.value));
+    const sum = values.reduce((a, b) => a + b, 0);
+    const avg = sum / count;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    const fmt = (v) => (v >= 0 ? '' : '-') + Math.abs(v).toLocaleString(undefined, {maximumFractionDigits: 2});
+    document.getElementById('selSum').textContent = fmt(sum);
+    document.getElementById('selAvg').textContent = fmt(avg);
+    document.getElementById('selMin').textContent = fmt(min);
+    document.getElementById('selMax').textContent = fmt(max);
+}
+
+function clearSelection() {
+    document.querySelectorAll('.tx-select').forEach(cb => cb.checked = false);
+    document.getElementById('selectionBar').classList.add('hidden');
+}
+
+updateLabels();
+</script>
+{% endblock %}

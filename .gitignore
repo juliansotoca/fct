@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+reports/
+*.xlsx
+*.pdf
+data/
+imports/
+*.db
+*.db-shm
+*.db-wal
+*.json
+*.csv
+!data/.gitkeep

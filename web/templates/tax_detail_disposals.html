@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Tax Detail - {{ year }} - CryptoTax{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('tax_reports', year=year) }}" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                {% if filter_label %}{{ filter_label }}{% else %}{{ t('all_disposals') }}{% endif %} — {{ year }}
+            </h1>
+            <p class="text-gray-500 text-sm mt-1">{{ disposals|length }} {{ t('transactions_label') }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm text-gray-500">{{ t('total_disposals') }}</p>
+        <p class="text-2xl font-bold text-gray-900">{{ disposals|length }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm text-gray-500">{{ t('total_sale_value') }}</p>
+        <p class="text-2xl font-bold text-gray-900 sensitive">{{ "%.2f"|format(disposals|sum(attribute='total_sale_value_eur')) }} €</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm text-gray-500">{{ t('total_cost_basis_label') }}</p>
+        <p class="text-2xl font-bold text-gray-900 sensitive">{{ "%.2f"|format(disposals|sum(attribute='total_acquisition_cost_eur')) }} €</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm text-gray-500">{{ t('net_pnl') }}</p>
+        {% set net = disposals|sum(attribute='gain_loss_eur') %}
+        <p class="text-2xl font-bold {% if net >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">{{ "%.2f"|format(net) }} €</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-gray-200">
+                    <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('date') }}</th>
+                    <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('asset') }}</th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('sold') }}</th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('acquired') }}</th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('sale_value') }}</th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('cost_basis_label') }}</th>
+                    <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">{{ t('pnl') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in disposals|sort(attribute='tx.time') %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="px-6 py-3 text-sm text-gray-900">{{ d.tx.time.strftime('%Y-%m-%d') }}</td>
+                    <td class="px-6 py-3">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {{ d.tx.currency }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-right text-sm text-red-600 sensitive">{{ "%.8f"|format(d.tx.change|abs) }}</td>
+                    <td class="px-6 py-3 text-right text-sm text-gray-500">
+                        {% for sub in d.disposals %}
+                        <div>{{ "%.8f"|format(sub.disposed_qty) }} <span class="text-gray-400">({{ sub.acquisition_date.strftime('%Y-%m-%d') }})</span></div>
+                        {% endfor %}
+                    </td>
+                    <td class="px-6 py-3 text-right text-sm text-gray-900 sensitive">{{ "%.2f"|format(d.total_sale_value_eur) }} €</td>
+                    <td class="px-6 py-3 text-right text-sm text-gray-900 sensitive">{{ "%.2f"|format(d.total_acquisition_cost_eur) }} €</td>
+                    <td class="px-6 py-3 text-right font-medium {% if d.gain_loss_eur >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">
+                        {% if d.gain_loss_eur >= 0 %}+{% endif %}{{ "%.2f"|format(d.gain_loss_eur) }} €
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="border-t-2 border-gray-300 bg-gray-50">
+                    <td class="px-6 py-3 font-semibold text-gray-900" colspan="4">{{ t('total') }}</td>
+                    <td class="px-6 py-3 text-right font-semibold text-gray-900 sensitive">{{ "%.2f"|format(disposals|sum(attribute='total_sale_value_eur')) }} €</td>
+                    <td class="px-6 py-3 text-right font-semibold text-gray-900 sensitive">{{ "%.2f"|format(disposals|sum(attribute='total_acquisition_cost_eur')) }} €</td>
+                    <td class="px-6 py-3 text-right font-semibold {% if disposals|sum(attribute='gain_loss_eur') >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} sensitive">
+                        {% if disposals|sum(attribute='gain_loss_eur') >= 0 %}+{% endif %}{{ "%.2f"|format(disposals|sum(attribute='gain_loss_eur')) }} €
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% endblock %}

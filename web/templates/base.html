@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CryptoTax{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .nav-link { @apply flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors; }
+        .nav-link.active { @apply bg-blue-50 text-blue-600; }
+        .nav-link:not(.active) { @apply text-gray-600 hover:text-gray-900 hover:bg-gray-50; }
+        .topnav-link { @apply flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors; }
+        .topnav-link.active { @apply bg-blue-50 text-blue-600; }
+        .topnav-link:not(.active) { @apply text-gray-600 hover:text-gray-900 hover:bg-gray-50; }
+        .sensitive { transition: filter 0.2s, color 0.2s; }
+        .sensitive.blurred { filter: blur(8px); user-select: none; pointer-events: none; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {% block page_header %}{% include "_header.html" %}{% endblock %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 {% if sidebar_mode %}ml-64{% endif %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        let privacyMode = localStorage.getItem('privacyMode') === 'true';
+        function togglePrivacy() {
+            privacyMode = !privacyMode;
+            localStorage.setItem('privacyMode', privacyMode);
+            applyPrivacy();
+        }
+        function applyPrivacy() {
+            document.querySelectorAll('.sensitive').forEach(el => {
+                el.classList.toggle('blurred', privacyMode);
+            });
+            const eyeOpen = document.getElementById('eyeOpen');
+            const eyeClosed = document.getElementById('eyeClosed');
+            if (eyeOpen) eyeOpen.classList.toggle('hidden', privacyMode);
+            if (eyeClosed) eyeClosed.classList.toggle('hidden', !privacyMode);
+        }
+        document.addEventListener('DOMContentLoaded', applyPrivacy);
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,86 @@
+{% if sidebar_mode %}
+<aside class="w-64 bg-white border-r border-gray-200 flex-shrink-0 fixed inset-y-0 left-0 z-50">
+    <div class="flex flex-col h-full">
+        <div class="p-4 border-b border-gray-100">
+            <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">CT</span>
+                </div>
+                <span class="text-lg font-bold text-gray-900">{{ t('app_name') }}</span>
+            </a>
+        </div>
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <a href="{{ url_for('dashboard') }}" class="nav-link block {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                {{ t('nav_dashboard') }}
+            </a>
+            <a href="{{ url_for('transactions') }}" class="nav-link block {% if request.endpoint == 'transactions' %}active{% endif %}">
+                {{ t('nav_transactions') }}
+            </a>
+            <a href="{{ url_for('tax_reports') }}" class="nav-link block {% if request.endpoint == 'tax_reports' %}active{% endif %}">
+                {{ t('nav_tax_reports') }}
+            </a>
+            <a href="{{ url_for('settings') }}" class="nav-link block {% if request.endpoint == 'settings' %}active{% endif %}">
+                {{ t('nav_settings') }}
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <div class="flex items-center justify-between text-xs text-gray-400">
+                <div class="flex items-center gap-2">
+                    <span class="bg-gray-100 px-2 py-0.5 rounded">FIFO</span>
+                    <span class="bg-gray-100 px-2 py-0.5 rounded">EUR</span>
+                </div>
+                <button id="privacyToggle" onclick="togglePrivacy()" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="{{ t('hide_show_values') }}">
+                    <svg id="eyeOpen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <svg id="eyeClosed" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</aside>
+{% else %}
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center gap-10">
+                <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2 flex-shrink-0">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">CT</span>
+                    </div>
+                    <span class="text-xl font-bold text-gray-900">{{ t('app_name') }}</span>
+                </a>
+                <div class="hidden md:flex items-center gap-4">
+                    <a href="{{ url_for('dashboard') }}" class="topnav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                        {{ t('nav_dashboard') }}
+                    </a>
+                    <div class="w-px h-6 bg-gray-200"></div>
+                    <a href="{{ url_for('transactions') }}" class="topnav-link {% if request.endpoint == 'transactions' %}active{% endif %}">
+                        {{ t('nav_transactions') }}
+                    </a>
+                    <div class="w-px h-6 bg-gray-200"></div>
+                    <a href="{{ url_for('tax_reports') }}" class="topnav-link {% if request.endpoint == 'tax_reports' %}active{% endif %}">
+                        {{ t('nav_tax_reports') }}
+                    </a>
+                    <div class="w-px h-6 bg-gray-200"></div>
+                    <a href="{{ url_for('settings') }}" class="topnav-link {% if request.endpoint == 'settings' %}active{% endif %}">
+                        {{ t('nav_settings') }}
+                    </a>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">FIFO</span>
+                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">EUR</span>
+                <button id="privacyToggle" onclick="togglePrivacy()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors" title="{{ t('hide_show_values') }}">
+                    <svg id="eyeOpen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <svg id="eyeClosed" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="md:hidden border-t border-gray-200 px-4 py-2 flex gap-1 overflow-x-auto">
+        <a href="{{ url_for('dashboard') }}" class="nav-link text-xs whitespace-nowrap {% if request.endpoint == 'dashboard' %}active{% endif %}">{{ t('nav_dashboard') }}</a>
+        <a href="{{ url_for('transactions') }}" class="nav-link text-xs whitespace-nowrap {% if request.endpoint == 'transactions' %}active{% endif %}">{{ t('nav_transactions') }}</a>
+        <a href="{{ url_for('tax_reports') }}" class="nav-link text-xs whitespace-nowrap {% if request.endpoint == 'tax_reports' %}active{% endif %}">{{ t('nav_tax_reports') }}</a>
+        <a href="{{ url_for('settings') }}" class="nav-link text-xs whitespace-nowrap {% if request.endpoint == 'settings' %}active{% endif %}">{{ t('nav_settings') }}</a>
+    </div>
+</nav>
+{% endif %}
