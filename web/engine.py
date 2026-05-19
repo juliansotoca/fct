@@ -14,13 +14,16 @@ from web.database import get_db, save_price, get_price, get_yearly_prices, get_s
 
 STABLECOINS = {"USDT", "USDC", "BUSD", "DAI", "TUSD", "USDP", "USD", "EUR"}
 
-STABLECOIN_RATES = {
-    "USDT": 0.92,
-    "USDC": 0.92,
-    "BUSD": 0.92,
-    "DAI": 0.92,
-    "EUR": 1.0,
+HISTORICAL_STABLECOIN_RATES = {
+    2021: {"USDT": 0.85, "USDC": 0.85, "BUSD": 0.85, "DAI": 0.85, "TUSD": 0.85, "USDP": 0.85, "USD": 0.85},
+    2022: {"USDT": 0.95, "USDC": 0.95, "BUSD": 0.95, "DAI": 0.95, "TUSD": 0.95, "USDP": 0.95, "USD": 0.95},
+    2023: {"USDT": 0.92, "USDC": 0.92, "BUSD": 0.92, "DAI": 0.92, "TUSD": 0.92, "USDP": 0.92, "USD": 0.92},
+    2024: {"USDT": 0.92, "USDC": 0.92, "BUSD": 0.92, "DAI": 0.92, "TUSD": 0.92, "USDP": 0.92, "USD": 0.92},
+    2025: {"USDT": 0.93, "USDC": 0.93, "BUSD": 0.93, "DAI": 0.93, "TUSD": 0.93, "USDP": 0.93, "USD": 0.93},
+    2026: {"USDT": 0.92, "USDC": 0.92, "BUSD": 0.92, "DAI": 0.92, "TUSD": 0.92, "USDP": 0.92, "USD": 0.92},
 }
+
+STABLECOIN_RATES = HISTORICAL_STABLECOIN_RATES[2026]
 
 HISTORICAL_ANNUAL_PRICES = {
     "BTC": {
@@ -410,7 +413,10 @@ def fetch_prices_batch(currencies, days_back=1825):
 
 def convert_to_eur(currency, amount, date, price_cache=None):
     if currency in STABLECOINS:
-        return Decimal(str(amount)) * Decimal(str(STABLECOIN_RATES.get(currency, 0.92)))
+        date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(date)[:10]
+        year = int(date_str[:4])
+        rate = HISTORICAL_STABLECOIN_RATES.get(year, HISTORICAL_STABLECOIN_RATES[2026]).get(currency, 0.92)
+        return Decimal(str(amount)) * Decimal(str(rate))
 
     date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(date)[:10]
     year = date_str[:4]
